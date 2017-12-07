@@ -1,0 +1,44 @@
+= Coroutines for Kotlin Ratpack apps
+
+This project contains a minimal implementation of coroutines for Ratpack apps written in Kotlin.
+
+== Basics
+
+https://ratpack.io/[Ratpack] apps operate on two types of threads:
+
+* a compute thread handles the request in general by computing values and rendering them back to the client
+* a blocking thread is used for any work that must wait on a slow resource (e.g. a database or a REST request)
+
+It is imperative to use the correct thread type for a certain type of work to achieve peak performance.
+Ratpack gives developers the tools to achieve this using its own version of promises but this can lead to the so-called 
+https://ratpack.io/manual/current/async.html#async_composition_and_avoiding_callback_hell[callback hell].
+
+Kotlin's coroutines are an even nicer way of combating callback hell (one of the main motivations for coroutines, in fact)
+so this is an attempt to combine Ratpack's promises with Kotlin's coroutines.
+
+
+== Installation
+
+Currently the easiest way to 'install' this library is to simply copy the `coroutines.kt` file into your project.
+You will need to add `kotlinx-coroutines-core` and of course Ratpack - see the `build.gradle.kts` for the exact includes.
+
+If this library proves useful, grows more complex and/or more people are interested I might publish it somewhere
+for easier inclusion in projects.
+
+
+== Usage
+
+[source,kotlin]
+----
+fun hello(ctx: Context) = async {
+	val name = await { Database.fetchName() }
+	ctx.response.send("Hello, $name!")
+}
+----
+
+
+== Warning
+
+This library was not extensively tested in production yet so use it at your own risk.
+
+Contributions are welcome!
