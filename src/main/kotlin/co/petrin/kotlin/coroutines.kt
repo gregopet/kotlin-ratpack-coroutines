@@ -11,7 +11,7 @@ import ratpack.exec.Blocking
  *
  * @param block The block to execute
  */
-inline fun async(noinline block: suspend () -> Any) {
+inline fun async(noinline block: suspend () -> Any?) {
    launch(Unconfined, CoroutineStart.UNDISPATCHED) {
       block()
    }
