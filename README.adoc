@@ -30,9 +30,16 @@ for easier inclusion in projects.
 
 [source,kotlin]
 ----
+// Computation blocks
 fun hello(ctx: Context) = async {
 	val name = await { Database.fetchName() }
 	ctx.response.send("Hello, $name!")
+}
+
+// Resolve a Ratpack promise
+fun echo(ctx: Context) = async {
+	val body = ctx.request.body.await()
+	ctx.response.send(body)
 }
 ----
 

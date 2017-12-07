@@ -51,6 +51,16 @@ class BlockingBehaviorSpec : Spek({
                         Thread.sleep(100)
                         it.response.send("ECHO $threadName")
                     }
+
+                    chain.post("echobody") { ctx ->
+                        println("INSIDE ECHOBODY HANDLER $threadName")
+                        async {
+                            println("INSIDE ECHOBODY ASYNC $threadName")
+                            val txt = ctx.request.body.await().text
+                            println("INSIDE ECHOBODY ASYNC AFTER COROUTINE $threadName")
+                            ctx.response.send(txt)
+                        }
+                    }
                 }
             }
         }
@@ -118,6 +128,12 @@ class BlockingBehaviorSpec : Spek({
 
         test("A non-blocking function will return the correct result") {
             check(embeddedApp!!.httpClient.getText("sleep") == "WOKE UP")
+        }
+
+        test("await() can be called on Ratpack promises") {
+            val requestWithBody = embeddedApp!!.httpClient.requestSpec { it.body.text("foobar") }
+            val response = requestWithBody.postText("echobody")
+            check(response == "foobar") { "Response $response should be 'foobar'" }
         }
     }
 })

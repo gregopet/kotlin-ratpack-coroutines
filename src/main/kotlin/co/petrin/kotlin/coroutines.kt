@@ -2,6 +2,7 @@ package co.petrin.kotlin
 
 import kotlinx.coroutines.experimental.*
 import ratpack.exec.Blocking
+import ratpack.exec.Promise
 
 /**
  * Runs the given block on the request thread.
@@ -21,12 +22,12 @@ inline fun async(noinline block: suspend () -> Any?) {
  * Returns the result of the [block] as soon as the blocking computation completes. The request thread is released
  * during the blocking operation.
  */
-suspend fun <T> await(block: () -> T): T = suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
-   Blocking.get(block)
-   .onError{
-      cont.resumeWithException(it)
-   }
-   .then {
-      cont.resume(it)
-   }
+suspend fun <T> await(block: () -> T): T = Blocking.get(block).await()
+
+/**
+ * Resolves the promise and returns its value as soon as the blocking computation completes. The request thread is released
+ * during the blocking operation.
+ */
+suspend fun <T> Promise<T>.await(): T = suspendCancellableCoroutine { cont: CancellableContinuation<T> ->
+   this.onError { cont.resumeWithException(it) }.then { cont.resume(it) }
 }
