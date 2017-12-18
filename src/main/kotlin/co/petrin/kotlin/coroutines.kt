@@ -3,6 +3,7 @@ package co.petrin.kotlin
 import kotlinx.coroutines.experimental.*
 import ratpack.exec.Blocking
 import ratpack.exec.Promise
+import ratpack.handling.Context
 
 /**
  * Runs the given block on the request thread.
@@ -12,9 +13,13 @@ import ratpack.exec.Promise
  *
  * @param block The block to execute
  */
-inline fun async(noinline block: suspend () -> Any?) {
+inline fun Context.async(noinline block: suspend () -> Any?) {
    launch(Unconfined, CoroutineStart.UNDISPATCHED) {
-      block()
+      try {
+         block()
+      } catch (t:Throwable) {
+         this@async.error(t)
+      }
    }
 }
 

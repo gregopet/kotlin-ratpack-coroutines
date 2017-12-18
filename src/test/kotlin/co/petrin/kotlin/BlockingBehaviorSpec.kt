@@ -2,6 +2,8 @@ package co.petrin.kotlin
 
 import org.jetbrains.spek.api.Spek
 import org.jetbrains.spek.api.dsl.*
+import ratpack.error.ServerErrorHandler
+import ratpack.handling.Context
 import ratpack.test.embed.EmbeddedApp
 import java.util.concurrent.Semaphore
 import kotlin.concurrent.thread
@@ -20,6 +22,14 @@ class BlockingBehaviorSpec : Spek({
                 it.serverConfig { it.threads(1) }
                 it.handlers { chain ->
 
+                    chain.register { registry ->
+                        registry.add(ServerErrorHandler::class.java, object: ServerErrorHandler {
+                            override fun error(context: Context, throwable: Throwable) {
+                                context.response.status(500).send("CUSTOM ERROR HANDLER " + throwable)
+                            }
+                        })
+                    }
+
                     chain.get("sleepblock") { ctx ->
                         println("INSIDE SLEEPBLOCK HANDLER $threadName")
                         semaphore!!.release()
@@ -32,7 +42,7 @@ class BlockingBehaviorSpec : Spek({
                         println("INSIDE SLEEP HANDLER $threadName")
                         semaphore!!.release()
 
-                        async {
+                        ctx.async {
                             println("SLEEPING ASYNC $threadName")
                             var message = await {
                                 println("SLEEPING BLOCK ASYNC $threadName")
@@ -52,9 +62,33 @@ class BlockingBehaviorSpec : Spek({
                         it.response.send("ECHO $threadName")
                     }
 
+                    chain.get("throw") { ctx ->
+                        ctx.async {
+                            println("INSIDE ASYNC EXCEPTION THROWING HANDLER $threadName")
+                            Thread.sleep(100)
+                            println("INSIDE ASYNC EXCEPTION THROWING HANDLER, ABOUT TO THROW $threadName")
+                            throw IllegalStateException("Except me!")
+                        }
+                    }
+
+                    chain.get("throwcatch") { ctx ->
+                        ctx.async {
+                            println("INSIDE ASYNC EXCEPTION THROWING  AND CATCHING HANDLER $threadName")
+                            Thread.sleep(100)
+                            try {
+                                println("INSIDE ASYNC EXCEPTION THROWING HANDLER, ABOUT TO THROW $threadName")
+                                throw IllegalStateException("Except me!")
+                            } catch(t: Throwable) {
+                                ctx.render("Caught it")
+                            }
+                        }
+
+
+                    }
+
                     chain.post("echobody") { ctx ->
                         println("INSIDE ECHOBODY HANDLER $threadName")
-                        async {
+                        ctx.async {
                             println("INSIDE ECHOBODY ASYNC $threadName")
                             val txt = ctx.request.body.await().text
                             println("INSIDE ECHOBODY ASYNC AFTER COROUTINE $threadName")
@@ -134,6 +168,20 @@ class BlockingBehaviorSpec : Spek({
             val requestWithBody = embeddedApp!!.httpClient.requestSpec { it.body.text("foobar") }
             val response = requestWithBody.postText("echobody")
             check(response == "foobar") { "Response $response should be 'foobar'" }
+        }
+
+        test("exceptions are handled by Ratpack") {
+            val response = embeddedApp!!.httpClient.get("throw")
+            val responseText = response.body.text
+            check(response.status.code == 500) { "Response code should be '500' after exception, was ${response.status.code}" }
+            check(responseText.startsWith("CUSTOM ERROR HANDLER")) { "Server should render the error page after an exception, rendered $responseText instead" }
+        }
+
+        test("exceptions can be caught and thus not handled by Ratpack") {
+            val response = embeddedApp!!.httpClient.get("throwcatch")
+            val responseText = response.body.text
+            check(response.status.code == 200) { "Response code should be '200' after caught exception, was ${response.status.code}" }
+            check(responseText == "Caught it"){ "Server should have caught the exception but it rendered $responseText instead" }
         }
     }
 })
