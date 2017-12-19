@@ -66,6 +66,7 @@ dependencies {
     testCompile("io.ratpack", "ratpack-test", "1.5.0")
     testCompile("com.natpryce", "hamkrest","1.4.2.2")
     testCompile("org.jetbrains.kotlin", "kotlin-reflect", kotlin_version)
+    testCompile("ch.qos.logback", "logback-classic", "1.2.3")
     testCompile("org.jetbrains.spek:spek-api:1.1.5") {
         exclude("org.jetbrains.kotlin")
     }
